@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LD Carousel</title>
+
+  <style>
+    :root{
+      --bg1:#0b1020;
+      --bg2:#140b2a;
+      --glass: rgba(255,255,255,.08);
+      --stroke: rgba(255,255,255,.14);
+      --shadow: 0 18px 55px rgba(0,0,0,.45);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.65);
+      --accent: #8b5cf6; /* 보라 */
+      --accent2:#22d3ee; /* 청록 */
+      --radius: 18px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 800px at 15% 10%, rgba(139,92,246,.35), transparent 55%),
+        radial-gradient(900px 650px at 85% 15%, rgba(34,211,238,.28), transparent 55%),
+        radial-gradient(1000px 800px at 50% 110%, rgba(255,255,255,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+
+    /* 전체 카드 */
+    .wrap{
+      width: min(920px, 100%);
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      backdrop-filter: blur(12px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 상단 헤더 */
+    .head{
+      padding: 14px 16px 10px;
+      display:flex;
+      gap: 12px;
+      align-items:center;
+      justify-content:space-between;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .title strong{
+      font-size: 14px;
+      letter-spacing: .2px;
+    }
+    .title span{
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+
+    .controls{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap: wrap;
+      justify-content:flex-end;
+    }
+
+    .chip{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      padding: 7px 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      user-select:none;
+    }
+    .chip input{ accent-color: var(--accent); }
+
+    /* 캐러셀 영역 */
+    .carousel{
+      position: relative;
+      padding: 14px;
+    }
+
+    .viewport{
+      overflow:hidden;
+      border-radius: calc(var(--radius) - 4px);
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.25);
+      box-shadow: 0 10px 25px rgba(0,0,0,.25);
+    }
+
+    .track{
+      display:flex;
+      will-change: transform;
+      transition: transform 360ms cubic-bezier(.2,.9,.2,1);
+    }
+
+    .item{
+      flex: 0 0 100%;
+      padding: 10px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+
+    /* 16:9 프레임 */
+    .frame{
+      width: 100%;
+      aspect-ratio: 16/9;
+      border-radius: 14px;
+      overflow:hidden;
+      position: relative;
+      background: #000;
+      box-shadow: 0 12px 30px rgba(0,0,0,.35);
+    }
+
+    .frame::after{
+      content:"";
+      position:absolute; inset:0;
+      pointer-events:none;
+      background: linear-gradient(135deg, rgba(139,92,246,.16), transparent 55%),
+                  linear-gradient(315deg, rgba(34,211,238,.12), transparent 55%);
+      mix-blend-mode: screen;
+      opacity: .7;
+    }
+
+    iframe{
+      width:100%;
+      height:100%;
+      border:0;
+      display:block;
+    }
+
+    /* 좌우 버튼 */
+    .nav{
+      position:absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.38);
+      color: rgba(255,255,255,.92);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      box-shadow: 0 10px 25px rgba(0,0,0,.35);
+      transition: transform .15s ease, background .15s ease;
+      user-select:none;
+    }
+    .nav:hover{ background: rgba(0,0,0,.52); transform: translateY(-50%) scale(1.04); }
+    .nav:active{ transform: translateY(-50%) scale(.98); }
+    .prev{ left: 16px; }
+    .next{ right: 16px; }
+    .nav svg{ width: 18px; height: 18px; }
+
+    /* 도트 */
+    .dots{
+      display:flex;
+      justify-content:center;
+      gap: 9px;
+      padding: 12px 0 4px;
+    }
+    .dot{
+      width: 8px; height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.25);
+      border: 1px solid rgba(255,255,255,.18);
+      cursor:pointer;
+      transition: transform .15s ease, background .15s ease, width .15s ease;
+    }
+    .dot.active{
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-color: rgba(255,255,255,.24);
+      width: 18px;
+    }
+
+    /* 하단 캡션 */
+    .foot{
+      padding: 0 16px 14px;
+      color: var(--muted);
+      font-size: 12px;
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: rgba(255,255,255,.75);
+    }
+
+    /* 모바일에서 버튼 위치 살짝 */
+    @media (max-width: 520px){
+      .nav{ width: 40px; height: 40px; }
+      .prev{ left: 10px; }
+      .next{ right: 10px; }
+      .carousel{ padding: 12px; }
+      .item{ padding: 8px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap" id="app">
+    <div class="head">
+      <div class="title">
+        <strong>LD 작업 영상</strong>
+        <span>드래그/버튼으로 한 장씩 넘기기 · 반응형</span>
+      </div>
+
+      <div class="controls">
+        <label class="chip" title="자동으로 넘김">
+          <input type="checkbox" id="autoPlay" />
+          자동 재생
+        </label>
+        <label class="chip" title="3초마다 이동">
+          속도
+          <select id="interval" style="background:transparent;color:var(--text);border:0;outline:none;">
+            <option value="2500">2.5s</option>
+            <option value="3500" selected>3.5s</option>
+            <option value="5000">5s</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="carousel" aria-label="YouTube carousel">
+      <button class="nav prev" type="button" aria-label="이전">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <div class="viewport">
+        <div class="track">
+          <!-- 슬라이드들(원본) -->
+          <div class="item">
+            <div class="frame">
+              <iframe src="https://www.youtube.com/embed/unRpvJET3I0?rel=0&modestbranding=1"
+                title="LD 1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+            </div>
+          </div>
+
+          <div class="item">
+            <div class="frame">
+              <iframe src="https://www.youtube.com/embed/ZKl2kqy1938?rel=0&modestbranding=1"
+                title="LD 2" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+            </div>
+          </div>
+
+          <div class="item">
+            <div class="frame">
+              <iframe src="https://www.youtube.com/embed/I5IT5vOsoEs?rel=0&modestbranding=1"
+                title="LD 3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+            </div>
+          </div>
+
+          <div class="item">
+            <div class="frame">
+              <iframe src="https://www.youtube.com/embed/e5i0cTVEHIs?rel=0&modestbranding=1"
+                title="LD 4" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="nav next" type="button" aria-label="다음">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <div class="dots" aria-label="페이지 표시"></div>
+    </div>
+
+    <div class="foot">
+      <div>Tip: <span class="kbd">←</span> <span class="kbd">→</span> 키로도 이동 가능</div>
+      <div>모바일은 스와이프로 넘김</div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const app = document.getElementById('app');
+      const viewport = app.querySelector('.viewport');
+      const track = app.querySelector('.track');
+      const prevBtn = app.querySelector('.prev');
+      const nextBtn = app.querySelector('.next');
+      const dotsWrap = app.querySelector('.dots');
+      const autoPlayEl = document.getElementById('autoPlay');
+      const intervalEl = document.getElementById('interval');
+
+      const originals = Array.from(track.children);
+      const N = originals.length;
+
+      // 무한 루프용 clone
+      const firstClone = originals[0].cloneNode(true);
+      const lastClone  = originals[N-1].cloneNode(true);
+      track.insertBefore(lastClone, originals[0]);
+      track.appendChild(firstClone);
+
+      const items = () => Array.from(track.children); // clone 포함
+      let index = 1; // 첫 '진짜' 슬라이드
+      let animating = false;
+
+      // dots 생성
+      const dots = [];
+      for (let i=0; i<N; i++){
+        const d = document.createElement('button');
+        d.type = 'button';
+        d.className = 'dot' + (i===0 ? ' active' : '');
+        d.setAttribute('aria-label', `슬라이드 ${i+1}`);
+        d.addEventListener('click', () => goTo(i+1)); // +1 offset
+        dotsWrap.appendChild(d);
+        dots.push(d);
+      }
+
+      const width = () => viewport.clientWidth;
+
+      const setPos = (withAnim=true) => {
+        track.style.transition = withAnim ? 'transform 360ms cubic-bezier(.2,.9,.2,1)' : 'none';
+        track.style.transform = `translateX(${-width()*index}px)`;
+      };
+
+      const setDot = () => {
+        const real = (index - 1 + N) % N;
+        dots.forEach((d,i)=>d.classList.toggle('active', i===real));
+      };
+
+      const goTo = (nextIndex) => {
+        if (animating) return;
+        animating = true;
+        index = nextIndex;
+        setPos(true);
+        setDot();
+      };
+
+      // 초기 위치
+      setPos(false);
+
+      // 버튼
+      prevBtn.addEventListener('click', () => goTo(index - 1));
+      nextBtn.addEventListener('click', () => goTo(index + 1));
+
+      // transition 끝나면 clone 구간 순간이동
+      track.addEventListener('transitionend', () => {
+        const arr = items();
+        if (arr[index] === firstClone){
+          index = 1; setPos(false);
+        } else if (arr[index] === lastClone){
+          index = N; setPos(false);
+        }
+        animating = false;
+        setDot();
+      });
+
+      // 리사이즈 대응
+      window.addEventListener('resize', () => setPos(false));
+
+      // 키보드
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') goTo(index - 1);
+        if (e.key === 'ArrowRight') goTo(index + 1);
+      });
+
+      // 드래그/스와이프
+      let startX = 0, dx = 0, dragging = false;
+
+      const down = (x) => {
+        if (animating) return;
+        dragging = true;
+        startX = x;
+        dx = 0;
+        track.style.transition = 'none';
+      };
+      const move = (x) => {
+        if (!dragging) return;
+        dx = x - startX;
+        track.style.transform = `translateX(${-width()*index + dx}px)`;
+      };
+      const up = () => {
+        if (!dragging) return;
+        dragging = false;
+        const threshold = width() * 0.18;
+        if (dx > threshold) goTo(index - 1);
+        else if (dx < -threshold) goTo(index + 1);
+        else { setPos(true); animating = false; setDot(); }
+        dx = 0;
+      };
+
+      viewport.addEventListener('mousedown', (e) => down(e.clientX));
+      window.addEventListener('mousemove', (e) => move(e.clientX));
+      window.addEventListener('mouseup', up);
+
+      viewport.addEventListener('touchstart', (e) => down(e.touches[0].clientX), {passive:true});
+      viewport.addEventListener('touchmove', (e) => move(e.touches[0].clientX), {passive:true});
+      viewport.addEventListener('touchend', up);
+
+      // 자동 재생
+      let timer = null;
+      const stopAuto = () => { if(timer) clearInterval(timer); timer = null; };
+      const startAuto = () => {
+        stopAuto();
+        const ms = parseInt(intervalEl.value, 10);
+        timer = setInterval(() => goTo(index + 1), ms);
+      };
+
+      autoPlayEl.addEventListener('change', () => {
+        if (autoPlayEl.checked) startAuto();
+        else stopAuto();
+      });
+      intervalEl.addEventListener('change', () => {
+        if (autoPlayEl.checked) startAuto();
+      });
+
+      // 사용자가 조작하면 잠깐 멈추고 싶으면 여기에서 stopAuto() 넣어도 됨
+    });
+  </script>
+</body>
+</html>
